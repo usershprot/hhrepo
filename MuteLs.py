@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 @loader.tds
 class MutLS(loader.Module):
-    """Модуль для мьюта ЛС с пользователями (без db, полностью рабочий)"""
+    """Модуль для мута ЛС с пользователями (без db, полностью рабочий)"""
     strings = {
         "name": "MutLS",
         "mut_msg": "<emoji document_id=5974558538213625534>🔇</emoji> <b>Помолчи.</b>",
@@ -21,7 +21,6 @@ class MutLS(loader.Module):
     async def client_ready(self, client, db):
         self.client = client
         self.db = db
-        # Без db, просто инициализируем память
         self._muted_users = set()
         logger.info("MutLS загружен, замьюченные пользователи: пусто")
 
@@ -61,7 +60,6 @@ class MutLS(loader.Module):
     async def watcher(self, message: Message):
         """Удаляет сообщения от замьюченных пользователей в ЛС"""
         if message.is_private and message.sender_id in self._muted_users:
-            # Не удаляем свои системные сообщения
             if message.text in [self.strings("mut_msg"), self.strings("unmut_msg")]:
                 return
             await message.delete()
