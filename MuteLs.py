@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-from hikkatl import loader, utils
+from loader import Module
 from telethon.tl.types import Message
 
-@loader.tds
-class MutLSMod(loader.Module):
-    """Модуль для мьюта ЛС с нужными эмодзи"""
+class MutLSMod(Module):
+    """Модуль для мьюта ЛС (HerokuTL)"""
     strings = {
         "name": "MutLS",
         "mut_msg": "<emoji document_id=5974558538213625534>🔇</emoji> <b>Помолчи.</b>",
         "unmut_msg": "<emoji document_id=5976746905655316100>🔊</emoji> <b>Говори.</b>",
+        "no_reply": "<b>Команду нужно использовать в ЛС или ответом на сообщение.</b>",
     }
 
     def __init__(self):
@@ -17,37 +17,43 @@ class MutLSMod(loader.Module):
     async def client_ready(self, client, db):
         self.client = client
         self.db = db
+        # загружаем замьюченных пользователей из базы
+        self._muted_users = set(await self.db.get("muted_users", []))
 
-    @loader.unrestricted
     async def mutlscmd(self, message: Message):
         """Мьют ЛС с пользователем"""
-        if message.is_private:
-            self._muted_users.add(message.chat_id)
-            await message.edit(self.strings("mut_msg"))
-        else:
+        target_id = message.chat_id
+        if not message.is_private:
             reply = await message.get_reply_message()
             if reply:
-                self._muted_users.add(reply.chat_id)
-                await message.edit(self.strings("mut_msg"))
+                target_id = reply.chat_id
             else:
-                await message.edit("<b>Команду нужно использовать в ЛС или ответом на сообщение.</b>")
+                await message.edit(self.strings("no_reply"))
+                return
 
-    @loader.unrestricted
+        self._muted_users.add(target_id)
+        await self.db.set("muted_users", list(self._muted_users))
+        await message.edit(self.strings("mut_msg"))
+
     async def unmutlscmd(self, message: Message):
         """Размьют ЛС с пользователем"""
-        if message.is_private:
-            self._muted_users.discard(message.chat_id)
-            await message.edit(self.strings("unmut_msg"))
-        else:
+        target_id = message.chat_id
+        if not message.is_private:
             reply = await message.get_reply_message()
             if reply:
-                self._muted_users.discard(reply.chat_id)
-                await message.edit(self.strings("unmut_msg"))
+                target_id = reply.chat_id
             else:
-                await message.edit("<b>Команду нужно использовать в ЛС или ответом на сообщение.</b>")
+                await message.edit(self.strings("no_reply"))
+                return
 
-    @loader.ratelimit
+        self._muted_users.discard(target_id)
+        await self.db.set("muted_users", list(self._muted_users))
+        await message.edit(self.strings("unmut_msg"))
+
     async def watcher(self, message: Message):
-        """Блокирует сообщения от замьюченных пользователей в ЛС"""
+        """Удаляет сообщения от замьюченных пользователей в ЛС"""
         if message.is_private and message.sender_id in self._muted_users:
+            # Не удаляем свои системные сообщения
+            if message.text in [self.strings("mut_msg"), self.strings("unmut_msg")]:
+                return
             await message.delete()
