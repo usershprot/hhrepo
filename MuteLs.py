@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 @loader.tds
 class MutLS(loader.Module):
-    """Модуль для мьюта ЛС с пользователями"""
+    """Модуль для мьюта ЛС с пользователями (без db, полностью рабочий)"""
     strings = {
         "name": "MutLS",
         "mut_msg": "<emoji document_id=5974558538213625534>🔇</emoji> <b>Помолчи.</b>",
@@ -21,10 +21,9 @@ class MutLS(loader.Module):
     async def client_ready(self, client, db):
         self.client = client
         self.db = db
-        # Загружаем замьюченных пользователей из базы
-        muted = await self.db.get("muted_users", [])
-        self._muted_users = set(muted)
-        logger.info(f"MutLS загружен, замьюченные пользователи: {self._muted_users}")
+        # Без db, просто инициализируем память
+        self._muted_users = set()
+        logger.info("MutLS загружен, замьюченные пользователи: пусто")
 
     @loader.unrestricted
     async def mutlscmd(self, message: Message):
@@ -39,7 +38,6 @@ class MutLS(loader.Module):
                 return
 
         self._muted_users.add(target_id)
-        await self.db.set("muted_users", list(self._muted_users))
         await message.edit(self.strings("mut_msg"))
         logger.info(f"Пользователь {target_id} замьючен")
 
@@ -56,7 +54,6 @@ class MutLS(loader.Module):
                 return
 
         self._muted_users.discard(target_id)
-        await self.db.set("muted_users", list(self._muted_users))
         await message.edit(self.strings("unmut_msg"))
         logger.info(f"Пользователь {target_id} размьючен")
 
