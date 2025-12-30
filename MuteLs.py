@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-from loader import Module
+import logging
+from .. import loader, utils
 from telethon.tl.types import Message
 
-class MutLSMod(Module):
-    """Модуль для мьюта ЛС (HerokuTL)"""
+logger = logging.getLogger(__name__)
+
+@loader.tds
+class MutLS(loader.Module):
+    """Модуль для мьюта ЛС с пользователями"""
     strings = {
         "name": "MutLS",
         "mut_msg": "<emoji document_id=5974558538213625534>🔇</emoji> <b>Помолчи.</b>",
@@ -17,9 +21,12 @@ class MutLSMod(Module):
     async def client_ready(self, client, db):
         self.client = client
         self.db = db
-        # загружаем замьюченных пользователей из базы
-        self._muted_users = set(await self.db.get("muted_users", []))
+        # Загружаем замьюченных пользователей из базы
+        muted = await self.db.get("muted_users", [])
+        self._muted_users = set(muted)
+        logger.info(f"MutLS загружен, замьюченные пользователи: {self._muted_users}")
 
+    @loader.unrestricted
     async def mutlscmd(self, message: Message):
         """Мьют ЛС с пользователем"""
         target_id = message.chat_id
@@ -34,7 +41,9 @@ class MutLSMod(Module):
         self._muted_users.add(target_id)
         await self.db.set("muted_users", list(self._muted_users))
         await message.edit(self.strings("mut_msg"))
+        logger.info(f"Пользователь {target_id} замьючен")
 
+    @loader.unrestricted
     async def unmutlscmd(self, message: Message):
         """Размьют ЛС с пользователем"""
         target_id = message.chat_id
@@ -49,7 +58,9 @@ class MutLSMod(Module):
         self._muted_users.discard(target_id)
         await self.db.set("muted_users", list(self._muted_users))
         await message.edit(self.strings("unmut_msg"))
+        logger.info(f"Пользователь {target_id} размьючен")
 
+    @loader.ratelimit
     async def watcher(self, message: Message):
         """Удаляет сообщения от замьюченных пользователей в ЛС"""
         if message.is_private and message.sender_id in self._muted_users:
@@ -57,3 +68,4 @@ class MutLSMod(Module):
             if message.text in [self.strings("mut_msg"), self.strings("unmut_msg")]:
                 return
             await message.delete()
+            logger.info(f"Удалено сообщение от {message.sender_id}")
