@@ -1,9 +1,9 @@
 """
-    🎬 VeoGen — Генерация видео через Google Veo 3 (Fixed)
+    🎬 VeoGen — Генерация видео через Google Veo 3
     Поддерживает text-to-video и image-to-video.
 """
 
-__version__ = (1, 4, 1)
+__version__ = (1, 4, 2)
 # meta developer: @ai
 # scope: hikka_only
 # requires: aiohttp
@@ -55,7 +55,7 @@ class VeoGenMod(loader.Module):
             loader.ConfigValue("seconds", 5, "⏱ Длительность (5, 10)"),
             loader.ConfigValue("aspect_ratio", "16:9", "📐 Соотношение", 
                                validator=loader.validators.Choice(["16:9", "9:16", "1:1"])),
-            loader.ConfigValue("timeout", 300, "⏱ Таймаут (сек)"),
+            loader.ConfigValue("timeout", 400, "⏱ Таймаут (сек)"),
         )
 
     async def _generate_video(self, prompt: str, call, seconds: int = 0, image_bytes: bytes = None):
@@ -90,7 +90,7 @@ class VeoGenMod(loader.Module):
                 
                 op_name = result.get("name")
                 if not op_name:
-                    raise Exception(f"Не удалось получить ID операции. Ответ: {result}")
+                    raise Exception(f"Не удалось получить ID операции.")
 
             timeout = self.config["timeout"]
             elapsed = 0
@@ -116,13 +116,13 @@ class VeoGenMod(loader.Module):
                             raise Exception(f"Ошибка скачивания: {v_resp.status}")
                         return await v_resp.read(), time.time() - start_time
                 
-                await asyncio.sleep(10)
-                elapsed += 10
+                await asyncio.sleep(15)
+                elapsed += 15
                 try:
                     await call.edit(f"🎬 <b>Генерация... {int((elapsed/timeout)*100)}%</b>\n\n📝 <code>{prompt[:50]}...</code>")
                 except: pass
             
-            raise Exception("Превышено время ожидания (Timeout)")
+            raise Exception("Превышено время ожидания.")
 
     @loader.command(ru_doc="<промпт> — Сгенерировать видео через Veo 3")
     async def veocmd(self, message: Message):
@@ -138,7 +138,7 @@ class VeoGenMod(loader.Module):
             prompt = reply.text
         if reply and reply.photo:
             image_bytes = await reply.download_media(bytes)
-            if not prompt: prompt = "Animate this image"
+            if not prompt: prompt = "Animate this"
 
         if not prompt:
             return await utils.answer(message, self.strings["no_prompt"])
@@ -146,7 +146,7 @@ class VeoGenMod(loader.Module):
         call = await self.inline.form(
             text=self.strings["generating"].format(utils.escape_html(prompt[:100]), self.config["seconds"]),
             message=message,
-            reply_markup=[[{"text": "⏳ В очереди...", "callback": self._dummy}]]
+            reply_markup=[[{"text": "⏳ Ожидание...", "callback": self._dummy}]]
         )
 
         try:
@@ -165,7 +165,6 @@ class VeoGenMod(loader.Module):
             os.unlink(path)
         except Exception as e:
             err = str(e)
-            logger.exception(e)
             if "SAFETY_TRIGGERED" in err:
                 await call.edit(self.strings["safety"])
             else:
