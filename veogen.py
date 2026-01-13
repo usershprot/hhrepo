@@ -1,6 +1,9 @@
-🎬 VeoGen — Генерация видео через Google Veo 3 (Fixed)
+"""
+    🎬 VeoGen — Генерация видео через Google Veo 3 (Fixed)
+    Поддерживает text-to-video и image-to-video.
+"""
 
-__version__ = (1, 4, 0)
+__version__ = (1, 4, 1)
 # meta developer: @ai
 # scope: hikka_only
 # requires: aiohttp
@@ -49,7 +52,7 @@ class VeoGenMod(loader.Module):
                     "veo-3.1-fast-generate-preview",
                 ])
             ),
-            loader.ConfigValue("seconds", 5, "⏱ Длительность (влияет на лимиты)"),
+            loader.ConfigValue("seconds", 5, "⏱ Длительность (5, 10)"),
             loader.ConfigValue("aspect_ratio", "16:9", "📐 Соотношение", 
                                validator=loader.validators.Choice(["16:9", "9:16", "1:1"])),
             loader.ConfigValue("timeout", 300, "⏱ Таймаут (сек)"),
@@ -80,7 +83,6 @@ class VeoGenMod(loader.Module):
         }
         
         async with aiohttp.ClientSession() as session:
-            # 1. Отправка запроса
             async with session.post(url, headers=headers, json=payload) as resp:
                 result = await resp.json()
                 if "error" in result:
@@ -90,7 +92,6 @@ class VeoGenMod(loader.Module):
                 if not op_name:
                     raise Exception(f"Не удалось получить ID операции. Ответ: {result}")
 
-            # 2. Ожидание готовности
             timeout = self.config["timeout"]
             elapsed = 0
             while elapsed < timeout:
@@ -99,11 +100,9 @@ class VeoGenMod(loader.Module):
                 
                 if status.get("done"):
                     response = status.get("response", {})
-                    # Проверка структуры Veo 3
                     samples = response.get("generateVideoResponse", {}).get("generatedSamples", [])
                     
                     if not samples:
-                        # Проверка фильтров безопасности
                         if "error" in status:
                             raise Exception(status["error"].get("message"))
                         raise Exception("SAFETY_TRIGGERED")
@@ -112,7 +111,6 @@ class VeoGenMod(loader.Module):
                     if not video_uri:
                         raise Exception("URI видео отсутствует в ответе Google.")
 
-                    # 3. Скачивание файла
                     async with session.get(video_uri, headers={"x-goog-api-key": api_key}) as v_resp:
                         if v_resp.status != 200:
                             raise Exception(f"Ошибка скачивания: {v_resp.status}")
@@ -121,13 +119,14 @@ class VeoGenMod(loader.Module):
                 await asyncio.sleep(10)
                 elapsed += 10
                 try:
-                    await call.edit(f"🎬 <b>Генерация... {int((elapsed/timeout)*100)}%</b>")
+                    await call.edit(f"🎬 <b>Генерация... {int((elapsed/timeout)*100)}%</b>\n\n📝 <code>{prompt[:50]}...</code>")
                 except: pass
             
             raise Exception("Превышено время ожидания (Timeout)")
 
     @loader.command(ru_doc="<промпт> — Сгенерировать видео через Veo 3")
     async def veocmd(self, message: Message):
+        """Generate video with Veo 3"""
         if not self.config["api_key"]:
             return await utils.answer(message, self.strings["no_api_key"])
         
@@ -139,7 +138,7 @@ class VeoGenMod(loader.Module):
             prompt = reply.text
         if reply and reply.photo:
             image_bytes = await reply.download_media(bytes)
-            if not prompt: prompt = "Animate this"
+            if not prompt: prompt = "Animate this image"
 
         if not prompt:
             return await utils.answer(message, self.strings["no_prompt"])
@@ -147,7 +146,7 @@ class VeoGenMod(loader.Module):
         call = await self.inline.form(
             text=self.strings["generating"].format(utils.escape_html(prompt[:100]), self.config["seconds"]),
             message=message,
-            reply_markup=[[{"text": "⏳ В очереди...", "callback": lambda x: None}]]
+            reply_markup=[[{"text": "⏳ В очереди...", "callback": self._dummy}]]
         )
 
         try:
@@ -166,7 +165,11 @@ class VeoGenMod(loader.Module):
             os.unlink(path)
         except Exception as e:
             err = str(e)
+            logger.exception(e)
             if "SAFETY_TRIGGERED" in err:
                 await call.edit(self.strings["safety"])
             else:
-                await call.edit(self.strings["error"].format(err))
+                await call.edit(self.strings["error"].format(utils.escape_html(err[:200])))
+
+    async def _dummy(self, call):
+        await call.answer("Генерация продолжается...")
