@@ -4,7 +4,7 @@ const CEREBRAS_POOL = [
   'csk-mymvy3hvw89x95m4y8v8kxk2kvehd2m2jemvnewe6dypncfx'
 ];
 
-const MY_VALID_KEYS = ['hh-admin-777', 'maxim-dev-key'];
+const MY_VALID_KEYS = ['hh-admin-777', 'maxim-dev-key','luchshemu-truvun'];
 
 // Твои данные Telegram
 const TG_BOT_TOKEN = '8481727113:AAGXMtr5oT9z9wuZwFat04EQpTIolWpJWlQ';
