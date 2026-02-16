@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HH-API | Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f1a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .input-style { background: #1e293b; border: 1px solid #334155; transition: 0.2s; }
+        .input-style:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .progress-bg { background: #334155; overflow: hidden; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white tracking-tight">HH-API <span class="text-blue-500">Admin</span></h1>
+                <p class="text-gray-400 text-sm">Управление ключами и лимитами ИИ</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="resetAll()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm font-bold border border-red-500/20 transition">Сбросить всё</button>
+            </div>
+        </header>
+
+        <div class="glass rounded-2xl p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Пароль администратора</label>
+                    <input type="password" id="adminPass" placeholder="••••••••" class="input-style w-full p-3 rounded-xl text-white">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadStats()" class="btn-primary w-full p-3 rounded-xl font-bold text-white shadow-lg shadow-blue-500/20">Обновить данные</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6 mb-6">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <span class="bg-green-500 w-2 h-2 rounded-full"></span> Создать новый доступ
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="md:col-span-2">
+                    <input type="text" id="newKeyName" placeholder="Имя ключа (напр. jarvis_key)" class="input-style w-full p-3 rounded-xl">
+                </div>
+                <div class="md:col-span-2">
+                    <input type="number" id="newKeyLimit" placeholder="Лимит токенов" value="100000" class="input-style w-full p-3 rounded-xl">
+                </div>
+                <button onclick="setKey()" class="bg-green-600 hover:bg-green-500 p-3 rounded-xl font-bold transition">Добавить</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6">
+            <h2 class="text-lg font-bold mb-6 text-gray-300">Действующие ключи</h2>
+            <div id="keysContainer" class="space-y-6">
+                <div class="text-center py-10 text-gray-500 italic">Введите пароль и обновите данные для просмотра статистики</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Определяем путь к API динамически
+        const getAdminPath = () => {
+            // Если у тебя файл лежит в api/v1/admin.js, используй /api/v1/admin
+            // Если просто в api/admin.js, используй /api/admin
+            return '/api/admin'; 
+        };
+
+        async function callApi(params) {
+            const pass = document.getElementById('adminPass').value;
+            if(!pass) { alert("Сначала введите пароль!"); return; }
+            
+            const response = await fetch(`${getAdminPath()}?pass=${pass}&${params}`);
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || "Ошибка сервера");
+            }
+            return await response.json();
+        }
+
+        async function loadStats() {
+            const container = document.getElementById('keysContainer');
+            container.innerHTML = '<div class="text-center animate-pulse">Загрузка данных...</div>';
+            
+            try {
+                const data = await callApi('action=stats');
+                container.innerHTML = "";
+                const entries = Object.entries(data);
+
+                if (entries.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500">Ключей пока нет. Создайте первый!</div>';
+                    return;
+                }
+
+                entries.forEach(([name, info]) => {
+                    const used = info.used || 0;
+                    const limit = info.limit || 1;
+                    const percent = Math.min((used / limit) * 100, 100).toFixed(1);
+                    const isOver = percent >= 100;
+
+                    container.innerHTML += `
+                        <div class="group relative bg-white/5 p-4 rounded-xl border border-white/5 hover:border-blue-500/30 transition">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div class="text-blue-400 font-mono font-bold text-lg">${name}</div>
+                                    <div class="text-xs text-gray-500">Создан: ${new Date(info.created).toLocaleDateString()}</div>
+                                </div>
+                                <button onclick="deleteKey('${name}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-bold uppercase">
+                                    <span class="${isOver ? 'text-red-400' : 'text-gray-400'}">Расход: ${used.toLocaleString()}</span>
+                                    <span class="text-gray-400">Лимит: ${limit.toLocaleString()}</span>
+                                </div>
+                                <div class="progress-bg w-full h-3 rounded-full">
+                                    <div class="h-full rounded-full transition-all duration-500 ${isOver ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-blue-500'}" 
+                                         style="width: ${percent}%"></div>
+                                </div>
+                                <div class="text-[10px] text-gray-600">Всего за всё время: ${(info.total_all_time || 0).toLocaleString()} токенов</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                container.innerHTML = `<div class="bg-red-500/10 text-red-400 p-4 rounded-xl text-center border border-red-500/20">❌ ${e.message}</div>`;
+            }
+        }
+
+        async function setKey() {
+            const key = document.getElementById('newKeyName').value.trim();
+            const limit = document.getElementById('newKeyLimit').value;
+            if (!key) return alert("Введите имя ключа!");
+            
+            try {
+                await callApi(`action=set&key=${key}&limit=${limit}`);
+                document.getElementById('newKeyName').value = "";
+                loadStats();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deleteKey(key) {
+            if (confirm(`Удалить доступ для "${key}"?`)) {
+                try {
+                    await callApi(`action=del&key=${key}`);
+                    loadStats();
+                } catch (e) { alert(e.message); }
+            }
+        }
+
+        async function resetAll() {
+            if (confirm("Вы уверены? Это обнулит использованные токены для ВСЕХ ключей, и они снова смогут делать запросы.")) {
+                try {
+                    await callApi(`action=reset_all`);
+                    loadStats();
+                    alert("Лимиты успешно сброшены!");
+                } catch (e) { alert(e.message); }
+            }
+        }
+    </script>
+</body>
+</html>
