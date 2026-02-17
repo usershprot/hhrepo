@@ -32,7 +32,7 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: req.body.model || 'zai-glm-4.7',
+                model: req.body.model || 'gpt-oss-120b',
                 messages: req.body.messages,
                 stream: false
             }),
