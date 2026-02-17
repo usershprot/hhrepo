@@ -32,7 +32,7 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: req.body.model || 'llama3.1-8b',
+                model: req.body.model || 'gpt-oss-120B',
                 messages: req.body.messages,
                 stream: false
             }),
