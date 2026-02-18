@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
     try {
         // 3. Запрос к провайдеру apifree.ai
-        const response = await fetch('https://api.apifree.ai/v1/chat/completions', {
+        const response = await fetch('https://api.skycoding.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${selectedApiKey}`,
