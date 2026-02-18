@@ -35,7 +35,7 @@ export default async function handler(req, res) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: req.body.model || 'gpt-4o', // Модель по умолчанию
+                model: req.body.model || 'moonshotai/kimi-k2.5', // Модель по умолчанию
                 messages: req.body.messages,
                 stream: false // Для простоты логов используем false
             }),
