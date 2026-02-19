@@ -9,7 +9,7 @@ const MY_VALID_KEYS = ['hh-admin-777', 'maxim-test-key', 'luchshemu-truvun'];
 
 // Данные для уведомлений
 const TG_BOT_TOKEN = '8481727113:AAGXMtr5oT9z9wuZwFat04EQpTIolWpJWlQ';
-const TG_CHAT_ID = '685467338','7791830212';
+const TG_CHAT_ID = '685467338';
 
 export default async function handler(req, res) {
     // Разрешаем только POST запросы
