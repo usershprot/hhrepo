@@ -5,7 +5,7 @@ const APIFREE_POOL = [
 ];
 
 // Твои личные ключи для доступа к прокси
-const MY_VALID_KEYS = ['max1mapp'];
+const MY_VALID_KEYS = ['max1mapp', 'luchshemu-truvun'];
 
 // Список ID пользователей для логов
 const LOG_RECIPIENTS = ['685467338', '7791830212'];
