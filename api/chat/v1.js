@@ -5,7 +5,7 @@ const CEREBRAS_POOL = [
 ];
 
 // Твой список разрешенных ключей (теперь просто в коде)
-const MY_VALID_KEYS = ['hh-admin-777', 'maxim-test-key', 'luchshemu-truvun'];
+const MY_VALID_KEYS = ['hh-admin-777', 'max1mapp', 'luchshemu-truvun'];
 
 const TG_BOT_TOKEN = '8481727113:AAGXMtr5oT9z9wuZwFat04EQpTIolWpJWlQ';
 const TG_CHAT_ID = '685467338';
